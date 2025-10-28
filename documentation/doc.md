@@ -438,5 +438,288 @@ php artisan tinker
 >>> App\Models\Article::first()->tags->pluck('name')
 ```
 
-✅ You are **100% ready for 2.1.4 (CRUD)**.
-Say **“Next”** or **“Code only”** to continue.
+
+# Chapter 4: 2.1.4 — CRUD Queries with Eloquent
+
+**Goal:** Create, Read, Update, Delete data using Eloquent in Tinker  
+**Prerequisites:** Database filled via `migrate:fresh --seed` (from 2.1.3)
+
+---
+
+## What You Get
+
+- Full CRUD control
+- Relationship manipulation
+- Query chaining
+- Custom scopes
+- Real-world examples
+
+---
+
+## Step-by-Step Code (with comments)
+
+### 1. Launch Tinker
+```bash
+php artisan tinker
+````
+
+Interactive Laravel console – run Eloquent like magic.
+
+---
+
+### 2. CREATE (C in CRUD)
+
+#### Method 1: `create()` – One-liner
+
+```php
+use App\Models\Article;
+
+$article = Article::create([
+    'user_id' => 1,                     // Must exist in users table
+    'title'   => 'Premier article manuel',
+    'slug'    => 'premier-article',     // Must be unique
+    'excerpt' => 'Introduction à Eloquent CRUD',
+    'content' => 'Ceci est un test d’ajout via Tinker.'
+]);
+```
+
+⚠️ Fields must be in `$fillable` in `Article.php`.
+
+#### Method 2: `new` + `save()` – Step-by-step
+
+```php
+$a = new Article;
+$a->user_id = 1;
+$a->title   = 'Deuxième article';
+$a->slug    = 'deuxieme-article';
+$a->save(); // Saves to DB
+```
+
+**Verify**
+
+```php
+Article::count(); // → e.g. 21 (20 from seeder + 1 new)
+```
+
+---
+
+### 3. READ (R in CRUD)
+
+**All articles**
+
+```php
+Article::all(); // → Collection of all articles
+```
+
+**Find by ID**
+
+```php
+Article::find(1); // → Article with ID 1 or null
+```
+
+**Filter with where**
+
+```php
+Article::where('title', 'like', '%article%')->get();
+```
+
+**With relationships (eager load)**
+
+```php
+Article::with(['user', 'tags'])->first();
+```
+
+**Count articles per user**
+
+```php
+\App\Models\User::withCount('articles')->get(); 
+// → Each user has `articles_count` field
+```
+
+---
+
+### 4. UPDATE (U in CRUD)
+
+#### Method 1: `update()`
+
+```php
+$article = Article::find(1);
+$article->update(['title' => 'Titre modifié']);
+```
+
+#### Method 2: `save()`
+
+```php
+$article->title = 'Nouveau titre modifié';
+$article->save();
+```
+
+**Verify**
+
+```php
+Article::find(1)->title; // → "Nouveau titre modifié"
+```
+
+---
+
+### 5. DELETE (D in CRUD)
+
+```php
+$article = Article::find(1);
+$article->delete();
+```
+
+**Verify**
+
+```php
+Article::find(1); // → null
+```
+
+---
+
+### 6. MANAGE RELATIONSHIPS (n-n)
+
+**Add tag to article**
+
+```php
+$a = Article::first();
+$a->tags()->attach(1); // Attach tag ID 1
+```
+
+**Remove tag**
+
+```php
+$a->tags()->detach(1); // Remove tag ID 1
+```
+
+**Replace all tags**
+
+```php
+$a->tags()->sync([2, 3, 4]); 
+// → Only tags 2,3,4 remain (others removed)
+```
+
+---
+
+### 7. QUERY CHAINING (Filter + Sort + Limit)
+
+**Latest 5 articles**
+
+```php
+Article::orderBy('created_at', 'desc')->take(5)->get();
+```
+
+**Select specific columns**
+
+```php
+Article::select('id', 'title', 'slug')->get();
+```
+
+**Combine conditions**
+
+```php
+Article::where('user_id', 1)
+       ->orderBy('title')
+       ->limit(3)
+       ->get();
+```
+
+---
+
+### 8. CUSTOM SCOPE (Reusable Query)
+
+In `app/Models/Article.php`:
+
+```php
+public function scopeRecent($query)
+{
+    return $query->orderBy('created_at', 'desc')->take(5);
+}
+```
+
+**Use in Tinker**
+
+```php
+Article::recent()->get(); // → Last 5 articles
+```
+
+---
+
+### 9. BONUS: Advanced Query (Raw + Group By)
+
+```php
+Article::where('title', 'like', '%laravel%')
+       ->selectRaw('user_id, count(*) as total')
+       ->groupBy('user_id')
+       ->get();
+// → How many Laravel articles per user
+```
+
+---
+
+## SUMMARY: CRUD Methods
+
+| Action        | Eloquent Example             |
+| ------------- | ---------------------------- |
+| Create        | `create()` or `save()`       |
+| Read          | `all()`, `find()`, `where()` |
+| Update        | `update()` or `save()`       |
+| Delete        | `delete()`                   |
+| Relationships | `attach()`, `sync()`         |
+| Scopes        | `scopeName()`                |
+
+---
+
+## Your Final Tinker Workflow
+
+```bash
+php artisan tinker
+
+// CREATE
+Article::create(['user_id'=>1, 'title'=>'Test', 'slug'=>'test']);
+
+// READ
+Article::with(['user','tags'])->first();
+
+// UPDATE
+$a = Article::find(1); 
+$a->title = 'Updated'; 
+$a->save();
+
+// DELETE
+$a->delete();
+
+// RELATIONSHIPS
+$a->tags()->attach(1);
+$a->tags()->sync([2,3]);
+
+// SCOPE
+Article::recent()->get();
+```
+
+---
+
+## Your Final Workflow (Copy-Paste)
+
+```bash
+# 1. Reset + Fill DB
+php artisan migrate:fresh --seed
+
+# 2. Test CRUD
+php artisan tinker
+>>> Article::create(['user_id'=>1, 'title'=>'New', 'slug'=>'new'])
+>>> Article::find(1)->update(['title'=>'Changed'])
+>>> Article::find(1)->delete()
+>>> Article::recent()->get()
+```
+
+You are **100% ready** for real-world Laravel apps.
+
+```
+
+---
+
+If you want, I can also make a **super condensed "Tinker cheat sheet"** in Markdown that fits **all CRUD + relationships + scopes in one small page**, perfect for quick reference.  
+
+Do you want me to do that?
+```
