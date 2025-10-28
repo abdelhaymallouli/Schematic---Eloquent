@@ -18,4 +18,9 @@ class Article extends Model
 public function tags() {
     return $this->belongsToMany(Tag::class);
 }
+
+public function scopeRecent($query)
+{
+    return $query->orderBy('created_at', 'desc')->take(5);
+}
 }
